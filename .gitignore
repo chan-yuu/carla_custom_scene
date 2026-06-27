@@ -1,4 +1,4 @@
-# Ignore future downloaded source trees, dependencies, build outputs, and logs.
+# Ignore downloaded source trees, dependencies, build outputs, caches, and logs.
 *
 
 # Keep repository metadata and documentation.
@@ -10,3 +10,13 @@
 # Keep empty directory skeleton markers.
 !/**/
 !**/.gitkeep
+
+# Always ignore generated runtime/build areas.
+/build_logs/**
+/test_logs/**
+/tmp/**
+/ddc/**
+/venvs/**
+/carla/**
+/ue/**
+/scenario_runner/**
