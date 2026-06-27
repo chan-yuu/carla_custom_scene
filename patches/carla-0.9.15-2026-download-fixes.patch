@@ -1,0 +1,160 @@
+diff --git a/Update.sh b/Update.sh
+index 72ed63907..7dbacc6f3 100755
+--- a/Update.sh
++++ b/Update.sh
+@@ -47,7 +47,7 @@ pushd "$SCRIPT_DIR" >/dev/null
+ CONTENT_FOLDER="${SCRIPT_DIR}/Unreal/CarlaUE4/Content/Carla"
+ 
+ CONTENT_ID=$(tac $SCRIPT_DIR/Util/ContentVersions.txt | egrep -m 1 . | rev | cut -d' ' -f1 | rev)
+-CONTENT_LINK=http://carla-assets.s3.amazonaws.com/${CONTENT_ID}.tar.gz
++CONTENT_LINK=https://carla-assets.s3.us-east-005.backblazeb2.com/${CONTENT_ID}.tar.gz
+ 
+ VERSION_FILE="${CONTENT_FOLDER}/.version"
+ 
+@@ -65,6 +65,7 @@ function download_content {
+   else
+     wget -c ${CONTENT_LINK} -O Content.tar.gz
+   fi
++  tar -tzf Content.tar.gz >/dev/null
+   tar -xvzf Content.tar.gz -C Content
+   rm Content.tar.gz
+   mv Content/* "$CONTENT_FOLDER"
+diff --git a/Util/BuildTools/BuildCarlaUE4.sh b/Util/BuildTools/BuildCarlaUE4.sh
+index 3100fc7ed..5ad8edd91 100755
+--- a/Util/BuildTools/BuildCarlaUE4.sh
++++ b/Util/BuildTools/BuildCarlaUE4.sh
+@@ -143,11 +143,21 @@ fi
+ HOUDINI_PLUGIN_REPO=https://github.com/sideeffects/HoudiniEngineForUnreal.git
+ HOUDINI_PLUGIN_PATH=Plugins/HoudiniEngine
+ HOUDINI_PLUGIN_COMMIT=55b6a16cdf274389687fce3019b33e3b6e92a914
++HOUDINI_PLUGIN_ARCHIVE=https://github.com/sideeffects/HoudiniEngineForUnreal/archive/${HOUDINI_PLUGIN_COMMIT}.tar.gz
+ HOUDINI_PATCH=${CARLA_UTIL_FOLDER}/Patches/houdini_patch.txt
+ if [[ ! -d ${HOUDINI_PLUGIN_PATH} ]] ; then
+-  git clone ${HOUDINI_PLUGIN_REPO} ${HOUDINI_PLUGIN_PATH}
++  git clone ${HOUDINI_PLUGIN_REPO} ${HOUDINI_PLUGIN_PATH} || {
++    mkdir -p "$(dirname "${HOUDINI_PLUGIN_PATH}")"
++    tmp_archive="$(mktemp)"
++    wget -O "${tmp_archive}" "${HOUDINI_PLUGIN_ARCHIVE}"
++    tar -xzf "${tmp_archive}" -C "$(dirname "${HOUDINI_PLUGIN_PATH}")"
++    rm -f "${tmp_archive}"
++    mv "$(dirname "${HOUDINI_PLUGIN_PATH}")/HoudiniEngineForUnreal-${HOUDINI_PLUGIN_COMMIT}" "${HOUDINI_PLUGIN_PATH}"
++  }
+   pushd ${HOUDINI_PLUGIN_PATH} >/dev/null
+-  git checkout ${HOUDINI_PLUGIN_COMMIT}
++  if [ -d .git ]; then
++    git checkout ${HOUDINI_PLUGIN_COMMIT}
++  fi
+   git apply ${HOUDINI_PATCH}
+   popd >/dev/null
+ fi
+diff --git a/Util/BuildTools/BuildOSM2ODR.sh b/Util/BuildTools/BuildOSM2ODR.sh
+index 61e7d449f..7f5360406 100755
+--- a/Util/BuildTools/BuildOSM2ODR.sh
++++ b/Util/BuildTools/BuildOSM2ODR.sh
+@@ -17,6 +17,7 @@ GIT_PULL=true
+ CURRENT_OSM2ODR_COMMIT=1835e1e9538d0778971acc8b19b111834aae7261
+ OSM2ODR_BRANCH=aaron/defaultsidewalkwidth
+ OSM2ODR_REPO=https://github.com/carla-simulator/sumo.git
++OSM2ODR_ARCHIVE=https://github.com/carla-simulator/sumo/archive/${CURRENT_OSM2ODR_COMMIT}.tar.gz
+ 
+ OPTS=`getopt -o h --long help,rebuild,build,clean,carsim,no-pull -n 'parse-options' -- "$@"`
+ 
+@@ -79,11 +80,20 @@ if ${BUILD_OSM2ODR} ; then
+   # [ ! -d ${OSM2ODR_BUILD_FOLDER} ] && mkdir ${OSM2ODR_BUILD_FOLDER}
+   if ${GIT_PULL} ; then
+     if [ ! -d ${OSM2ODR_SOURCE_FOLDER} ] ; then
+-      git clone -b ${OSM2ODR_BRANCH} ${OSM2ODR_REPO} ${OSM2ODR_SOURCE_FOLDER}
++      git clone -b ${OSM2ODR_BRANCH} ${OSM2ODR_REPO} ${OSM2ODR_SOURCE_FOLDER} || {
++        mkdir -p "$(dirname "${OSM2ODR_SOURCE_FOLDER}")"
++        tmp_archive="$(mktemp)"
++        wget -O "${tmp_archive}" "${OSM2ODR_ARCHIVE}"
++        tar -xzf "${tmp_archive}" -C "$(dirname "${OSM2ODR_SOURCE_FOLDER}")"
++        rm -f "${tmp_archive}"
++        mv "$(dirname "${OSM2ODR_SOURCE_FOLDER}")/sumo-${CURRENT_OSM2ODR_COMMIT}" "${OSM2ODR_SOURCE_FOLDER}"
++      }
+     fi
+     cd ${OSM2ODR_SOURCE_FOLDER}
+-    git fetch
+-    git checkout ${CURRENT_OSM2ODR_COMMIT}
++    if [ -d .git ]; then
++      git fetch
++      git checkout ${CURRENT_OSM2ODR_COMMIT}
++    fi
+   fi
+ 
+   mkdir -p ${OSM2ODR_BUILD_FOLDER}
+diff --git a/Util/BuildTools/BuildUE4Plugins.sh b/Util/BuildTools/BuildUE4Plugins.sh
+index 4bb412eca..390ac6ff8 100755
+--- a/Util/BuildTools/BuildUE4Plugins.sh
++++ b/Util/BuildTools/BuildUE4Plugins.sh
+@@ -17,6 +17,7 @@ GIT_PULL=true
+ CURRENT_STREETMAP_COMMIT=260273d6b7c3f28988cda31fd33441de7e272958
+ STREETMAP_BRANCH=master
+ STREETMAP_REPO=https://github.com/carla-simulator/StreetMap.git
++STREETMAP_ARCHIVE=https://github.com/carla-simulator/StreetMap/archive/${CURRENT_STREETMAP_COMMIT}.tar.gz
+ 
+ OPTS=`getopt -o h --long build,rebuild,clean, -n 'parse-options' -- "$@"`
+ 
+@@ -79,11 +80,20 @@ if ${BUILD_STREETMAP} ; then
+   log "Downloading STREETMAP plugin."
+   if ${GIT_PULL} ; then
+     if [ ! -d ${CARLAUE4_STREETMAP_FOLDER} ] ; then
+-      git clone -b ${STREETMAP_BRANCH} ${STREETMAP_REPO} ${CARLAUE4_STREETMAP_FOLDER}
++      git clone -b ${STREETMAP_BRANCH} ${STREETMAP_REPO} ${CARLAUE4_STREETMAP_FOLDER} || {
++        mkdir -p "$(dirname "${CARLAUE4_STREETMAP_FOLDER}")"
++        tmp_archive="$(mktemp)"
++        wget -O "${tmp_archive}" "${STREETMAP_ARCHIVE}"
++        tar -xzf "${tmp_archive}" -C "$(dirname "${CARLAUE4_STREETMAP_FOLDER}")"
++        rm -f "${tmp_archive}"
++        mv "$(dirname "${CARLAUE4_STREETMAP_FOLDER}")/StreetMap-${CURRENT_STREETMAP_COMMIT}" "${CARLAUE4_STREETMAP_FOLDER}"
++      }
+     fi
+     cd ${CARLAUE4_STREETMAP_FOLDER}
+-    git fetch
+-    git checkout ${CURRENT_STREETMAP_COMMIT}
++    if [ -d .git ]; then
++      git fetch
++      git checkout ${CURRENT_STREETMAP_COMMIT}
++    fi
+   fi
+ fi
+ 
+diff --git a/Util/BuildTools/Setup.sh b/Util/BuildTools/Setup.sh
+index 9aa65533b..2ba74ca2a 100755
+--- a/Util/BuildTools/Setup.sh
++++ b/Util/BuildTools/Setup.sh
+@@ -91,12 +91,15 @@ for PY_VERSION in ${PY_VERSION_LIST[@]} ; do
+     BOOST_PACKAGE_BASENAME=boost_${BOOST_VERSION//./_}
+ 
+     log "Retrieving boost."
+-    wget "https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/${BOOST_PACKAGE_BASENAME}.tar.gz" || true
++    rm -f "${BOOST_PACKAGE_BASENAME}.tar.gz"
++    wget "https://archives.boost.io/release/${BOOST_VERSION}/source/${BOOST_PACKAGE_BASENAME}.tar.gz" || true
+     # try to use the backup boost we have in Jenkins
+-    if [[ ! -f "${BOOST_PACKAGE_BASENAME}.tar.gz" ]] ; then
++    if [[ ! -f "${BOOST_PACKAGE_BASENAME}.tar.gz" ]] || ! tar -tzf "${BOOST_PACKAGE_BASENAME}.tar.gz" >/dev/null 2>&1 ; then
+       log "Using boost backup"
++      rm -f "${BOOST_PACKAGE_BASENAME}.tar.gz"
+       wget "https://carla-releases.s3.eu-west-3.amazonaws.com/Backup/${BOOST_PACKAGE_BASENAME}.tar.gz" || true
+     fi
++    tar -tzf "${BOOST_PACKAGE_BASENAME}.tar.gz" >/dev/null
+ 
+     log "Extracting boost for Python ${PY_VERSION}."
+     tar -xzf ${BOOST_PACKAGE_BASENAME}.tar.gz
+@@ -339,7 +342,7 @@ unset RECAST_BASENAME
+ # ==============================================================================
+ 
+ LIBPNG_VERSION=1.6.37
+-LIBPNG_REPO=https://sourceforge.net/projects/libpng/files/libpng16/${LIBPNG_VERSION}/libpng-${LIBPNG_VERSION}.tar.xz
++LIBPNG_REPO=https://sourceforge.net/projects/libpng/files/libpng16/older-releases/${LIBPNG_VERSION}/libpng-${LIBPNG_VERSION}.tar.xz
+ LIBPNG_BASENAME=libpng-${LIBPNG_VERSION}
+ LIBPNG_INSTALL=${LIBPNG_BASENAME}-install
+ 
+@@ -351,6 +354,7 @@ if [[ -d ${LIBPNG_INSTALL} ]] ; then
+ else
+   log "Retrieving libpng."
+   wget ${LIBPNG_REPO}
++  tar -tf libpng-${LIBPNG_VERSION}.tar.xz >/dev/null
+ 
+   log "Extracting libpng."
+   tar -xf libpng-${LIBPNG_VERSION}.tar.xz
