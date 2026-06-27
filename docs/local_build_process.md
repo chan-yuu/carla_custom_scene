@@ -9,6 +9,14 @@ under one overlay:
 /mnt/carla_latest
 ```
 
+For a longer Chinese guide that starts from an empty directory, including
+RoadRunner notes, UE4 download/build, CARLA download/build, Content download,
+ScenarioRunner, PythonAPI, launch, and validation commands, see:
+
+```text
+docs/from_scratch_ue4_carla_build_zh.md
+```
+
 Mount first:
 
 ```bash

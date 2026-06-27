@@ -29,6 +29,7 @@ docs/local_build_process.md
 docs/local_install_status.md
 docs/custom_map_workflow.md
 docs/create_custom_town_zh.md
+docs/from_scratch_ue4_carla_build_zh.md
 ```
 
 Directory layout:
