@@ -1,34 +1,12 @@
-# Heavy source trees and third-party checkouts.
-/carla/
-/ue/
-/scenario_runner/
+# Ignore future downloaded source trees, dependencies, build outputs, and logs.
+*
 
-# Downloaded CARLA content, Unreal caches, and generated build outputs.
-/assets/
-/ddc/
-/tmp/
-/build_logs/
-/test_logs/
-/venvs/
+# Keep repository metadata and documentation.
+!/.gitignore
+!/README.md
+!/docs/
+!/docs/**
 
-# Custom map source data can be very large. Track metadata/docs only unless
-# a smaller curated asset is intentionally force-added.
-/hdmap_raw/
-/roadrunner/
-/custom_assets/
-/scenarios/
-
-# Local mount/ext4 artifacts.
-/lost+found/
-*.ext4.img
-
-# Python/editor noise.
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.vscode/
-.idea/
-*.swp
-*~
-
+# Keep empty directory skeleton markers.
+!/**/
+!**/.gitkeep
