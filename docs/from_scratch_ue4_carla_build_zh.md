@@ -271,6 +271,92 @@ find "$CARLA_LAB/carla/carla-0.9.15/Unreal/CarlaUE4/Content/Carla/Maps" -maxdept
 
 如果网络下载失败，优先重复执行 `./Update.sh`。不要手动把错误或不完整 tar 包塞进 Content。
 
+### 如果 Update.sh 下载 Content 失败
+
+如果官方源连接失败、速度极慢，或下载出的 `Content.tar.gz` 解压报错，不要继续用坏包。先确认版本号：
+
+```bash
+cd "$CARLA_LAB/carla/carla-0.9.15"
+
+CONTENT_ID=$(tac Util/ContentVersions.txt | egrep -m 1 . | rev | cut -d' ' -f1 | rev)
+echo "$CONTENT_ID"
+```
+
+CARLA 0.9.15 正常应是：
+
+```text
+20231108_c5101a5
+```
+
+原始源码里 `Update.sh` 对新版 Content 通常使用 AWS 地址：
+
+```text
+http://carla-assets.s3.amazonaws.com/${CONTENT_ID}.tar.gz
+```
+
+如果这个源不可用，可以只把下载源改成 Backblaze：
+
+```bash
+cd "$CARLA_LAB/carla/carla-0.9.15"
+
+cp Update.sh Update.sh.bak.$(date +%Y%m%d%H%M%S)
+
+perl -0pi -e 's#CONTENT_LINK=http://carla-assets\.s3\.amazonaws\.com/\$\{CONTENT_ID\}\.tar\.gz#CONTENT_LINK=https://carla-assets.s3.us-east-005.backblazeb2.com/${CONTENT_ID}.tar.gz#' Update.sh
+perl -0pi -e 's#CONTENT_LINK=https://carla-assets\.s3\.amazonaws\.com/\$\{CONTENT_ID\}\.tar\.gz#CONTENT_LINK=https://carla-assets.s3.us-east-005.backblazeb2.com/${CONTENT_ID}.tar.gz#' Update.sh
+
+grep -n 'CONTENT_LINK=' Update.sh
+```
+
+期望看到：
+
+```text
+CONTENT_LINK=https://carla-assets.s3.us-east-005.backblazeb2.com/${CONTENT_ID}.tar.gz
+```
+
+然后重新下载：
+
+```bash
+./Update.sh
+```
+
+也可以不改脚本，手动下载并解压：
+
+```bash
+cd "$CARLA_LAB/carla/carla-0.9.15"
+
+CONTENT_ID=$(tac Util/ContentVersions.txt | egrep -m 1 . | rev | cut -d' ' -f1 | rev)
+URL="https://carla-assets.s3.us-east-005.backblazeb2.com/${CONTENT_ID}.tar.gz"
+
+mkdir -p /tmp/carla_content_download
+aria2c -x16 -s16 -k1M -c "$URL" -d /tmp/carla_content_download -o "${CONTENT_ID}.tar.gz"
+
+tar -tzf "/tmp/carla_content_download/${CONTENT_ID}.tar.gz" >/dev/null
+
+rm -rf Unreal/CarlaUE4/Content/Carla
+mkdir -p Unreal/CarlaUE4/Content/Carla Content
+tar -xzf "/tmp/carla_content_download/${CONTENT_ID}.tar.gz" -C Content
+mv Content/* Unreal/CarlaUE4/Content/Carla/
+rmdir Content
+echo "$CONTENT_ID" > Unreal/CarlaUE4/Content/Carla/.version
+```
+
+验证：
+
+```bash
+cat Unreal/CarlaUE4/Content/Carla/.version
+du -sh Unreal/CarlaUE4/Content/Carla
+find Unreal/CarlaUE4/Content/Carla/Maps -maxdepth 2 -type f -name '*.umap' | head
+```
+
+注意：
+
+```text
+1. 不要把 Content tar.gz 复制进顶层 git 仓库。
+2. 不要提交 Unreal/CarlaUE4/Content/Carla 里的 .uasset/.umap 大资源。
+3. 只改下载 URL，不要随便改 ContentVersions.txt 里的版本号。
+4. 如果 tar 解压出现 "Skipping to next header" 或 "failure status"，通常是包没下完整，应该删除后重新下载。
+```
+
 ## 6. 下载 ScenarioRunner
 
 ```bash
